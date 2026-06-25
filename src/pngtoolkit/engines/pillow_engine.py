@@ -10,7 +10,7 @@ from __future__ import annotations
 from io import BytesIO
 from typing import Any
 
-from PIL import Image, ImageDraw, ImageFilter, ImageFont
+from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
 from PIL.ExifTags import TAGS
 
 from pngtoolkit.core.errors import (
@@ -188,6 +188,41 @@ def apply_blur(
     patch = work.crop(region).filter(blur)
     work.paste(patch, region)
     return work
+
+
+def _sample_background(rgb: Image.Image) -> tuple[int, int, int]:
+    """Estima a cor de fundo pela média dos quatro cantos."""
+    w, h = rgb.size
+    totals = [0, 0, 0]
+    for point in ((0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1)):
+        pixel = rgb.getpixel(point)
+        assert isinstance(pixel, tuple)
+        for channel in range(3):
+            totals[channel] += int(pixel[channel])
+    return totals[0] // 4, totals[1] // 4, totals[2] // 4
+
+
+def remove_background_color(
+    image: Image.Image,
+    *,
+    color: tuple[int, int, int] | None = None,
+    tolerance: int = 30,
+) -> Image.Image:
+    """Torna transparente o fundo de cor uniforme (chroma key) e devolve RGBA.
+
+    A distância de cada pixel à cor-alvo é o máximo das diferenças por canal; pixels
+    dentro de ``tolerance`` (0–255) viram transparentes. Sem ``color``, a cor de fundo
+    é estimada pelos cantos da imagem. Operação inteiramente vetorizada pelo Pillow.
+    """
+    rgb = image.convert("RGB")
+    target = color if color is not None else _sample_background(rgb)
+    solid = Image.new("RGB", rgb.size, target)
+    red, green, blue = ImageChops.difference(rgb, solid).split()
+    distance = ImageChops.lighter(ImageChops.lighter(red, green), blue)
+    alpha = distance.point(lambda v: 0 if v <= tolerance else 255)
+    result = image.convert("RGBA")
+    result.putalpha(alpha)
+    return result
 
 
 # --- EXIF -------------------------------------------------------------------

@@ -5,6 +5,7 @@ dos decoradores ``@register`` em cada módulo).
 """
 
 from pngtoolkit.operations import (  # noqa: F401
+    background,
     compose,
     exif,
     format,

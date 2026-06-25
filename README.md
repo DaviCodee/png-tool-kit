@@ -36,12 +36,18 @@ pip install -e ".[cli,api,avif,dev]" # tudo, incluindo testes
 | `cli`   | comando `pik`                              | —                                |
 | `api`   | servidor FastAPI/uvicorn                   | —                                |
 | `avif`  | `convert`/`compress` para/desde AVIF       | —                                |
+| `bg`**  | `remove-bg` modo `ai` (rembg)              | baixa o modelo no 1º uso         |
 | `svg`*  | `png-to-svg`                               | binários `magick` e `potrace`    |
 | `dev`   | pytest, ruff, mypy, httpx                  | —                                |
 
 \* O extra `svg` não tem dependência Python: basta ter o ImageMagick (`magick`) e o
 `potrace` instalados no sistema. Operações que dependem de um extra ausente continuam
 listadas, mas falham na execução com `MissingDependencyError` (HTTP 501 na API).
+
+\*\* O extra `bg` (modo `ai` do `remove-bg`) usa o `rembg` + `onnxruntime`. Hoje a
+cadeia de dependências do `rembg` (`pymatting`/`numba`/`llvmlite`) **só instala em
+Python 3.10–3.12**. O modo `color` do `remove-bg` não precisa do extra e funciona em
+qualquer versão.
 
 ## Operações
 
@@ -60,6 +66,7 @@ listadas, mas falham na execução com `MissingDependencyError` (HTTP 501 na API
 | `blur`        | composição   | desfoque gaussiano total ou por região                            |
 | `favicon`     | composição   | gera 16/32/180/192/512 + `favicon.ico` multi-resolução           |
 | `meme`        | composição   | texto topo/base estilo impact                                     |
+| `remove-bg`   | composição   | remove fundo por cor (rápido) ou por IA (extra `bg`)              |
 | `png-to-svg`  | vetor        | vetorização via magick + potrace (extra `svg`)                    |
 
 ## Uso — CLI
@@ -99,6 +106,20 @@ pik blur foto.png --radius 8 -o out/                       # imagem inteira
 # só uma região (mesmo formato LEFT TOP RIGHT BOTTOM do crop), p.ex. borrar um rosto:
 pik blur foto.png --radius 12 --region 40 30 120 110 -o out/
 ```
+
+### Remoção de fundo (`remove-bg`)
+
+```bash
+# modo color (rápido, fundo uniforme): cor amostrada dos cantos, ou explícita.
+pik remove-bg produto.png --method color --tolerance 30 -o out/
+pik remove-bg logo.png --method color --color 255 255 255 -o out/
+
+# modo ai (retrato/recorte genérico; requer o extra 'bg'):
+pik remove-bg retrato.jpg --method ai --model u2net -o out/
+```
+
+A saída é sempre PNG (precisa de canal alfa). Sem o extra `bg`, o modo `ai` falha com
+`MissingDependencyError` (HTTP 501 na API); o modo `color` funciona sempre.
 
 Operações de múltiplas saídas (ex.: `favicon`) gravam vários arquivos no diretório
 `-o`. Operações sem artefato (ex.: `exif-read`) imprimem o resultado como JSON.

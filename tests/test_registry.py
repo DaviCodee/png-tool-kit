@@ -20,6 +20,7 @@ EXPECTED = {
     "blur",
     "favicon",
     "meme",
+    "remove-bg",
     "png-to-svg",
 }
 

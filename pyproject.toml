@@ -25,6 +25,7 @@ dependencies = [
 cli = ["click>=8.1"]
 api = ["fastapi>=0.110", "uvicorn>=0.29", "python-multipart>=0.0.9"]
 avif = ["pillow-avif-plugin>=1.4"]   # opcional — habilita format=avif
+bg = ["rembg>=2.0", "onnxruntime>=1.17"]   # opcional — remove-bg modo 'ai'
 # svg: sem dependência Python; requer os binários 'magick' e 'potrace' no sistema.
 dev = [
     "pytest>=8.0",
@@ -66,6 +67,10 @@ module = [
     "PIL.*",
     "pillow_avif",
     "pillow_avif.*",
+    "rembg",
+    "rembg.*",
+    "onnxruntime",
+    "onnxruntime.*",
 ]
 ignore_missing_imports = true
 

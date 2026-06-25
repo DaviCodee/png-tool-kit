@@ -76,6 +76,30 @@ pik favicon logo.png -o out/               # gera vários tamanhos + .ico
 pik png-to-svg desenho.png --threshold 60 -o out/
 ```
 
+Cada flag se documenta — rode `pik <operação> --help` para ver os parâmetros e suas
+descrições (geradas a partir do modelo Pydantic da operação).
+
+### Recorte (`crop`)
+
+Dois modos mutuamente exclusivos:
+
+```bash
+# 1) caixa explícita: 4 inteiros LEFT TOP RIGHT BOTTOM, em pixels,
+#    com origem no canto superior esquerdo.
+pik crop foto.png --box 10 20 210 170 -o out/    # janela x:10..210, y:20..170
+
+# 2) janela ancorada: dimensão + onde ancorar (center ou um dos cantos).
+pik crop foto.png --width 200 --height 150 --anchor center -o out/
+```
+
+### Desfoque (`blur`)
+
+```bash
+pik blur foto.png --radius 8 -o out/                       # imagem inteira
+# só uma região (mesmo formato LEFT TOP RIGHT BOTTOM do crop), p.ex. borrar um rosto:
+pik blur foto.png --radius 12 --region 40 30 120 110 -o out/
+```
+
 Operações de múltiplas saídas (ex.: `favicon`) gravam vários arquivos no diretório
 `-o`. Operações sem artefato (ex.: `exif-read`) imprimem o resultado como JSON.
 

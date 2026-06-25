@@ -32,9 +32,11 @@ def _artifact(image: Image, item: ImageInput, suffix: str) -> Artifact:
 class ResizeParams(OperationParams):
     """Informe ``percent``, ou ``width`` e/ou ``height`` (mantém proporção)."""
 
-    width: int | None = Field(default=None, gt=0)
-    height: int | None = Field(default=None, gt=0)
-    percent: float | None = Field(default=None, gt=0)
+    width: int | None = Field(default=None, gt=0, description="largura alvo em pixels")
+    height: int | None = Field(default=None, gt=0, description="altura alvo em pixels")
+    percent: float | None = Field(
+        default=None, gt=0, description="escala em porcentagem (ex.: 50 = metade)"
+    )
 
     @model_validator(mode="after")
     def _at_least_one(self) -> ResizeParams:
@@ -67,12 +69,19 @@ class ResizeOperation(ImageOperation[ResizeParams]):
 class CropParams(OperationParams):
     """Recorte por âncora (``width``+``height``+``anchor``) ou caixa explícita."""
 
-    width: int | None = Field(default=None, gt=0)
-    height: int | None = Field(default=None, gt=0)
+    width: int | None = Field(
+        default=None, gt=0, description="largura da janela (modo ancorado)"
+    )
+    height: int | None = Field(
+        default=None, gt=0, description="altura da janela (modo ancorado)"
+    )
     anchor: Literal[
         "center", "top-left", "top-right", "bottom-left", "bottom-right"
-    ] = "center"
-    box: tuple[int, int, int, int] | None = None
+    ] = Field(default="center", description="onde ancorar a janela width x height")
+    box: tuple[int, int, int, int] | None = Field(
+        default=None,
+        description="caixa em pixels: LEFT TOP RIGHT BOTTOM (origem no topo-esquerdo)",
+    )
 
     @model_validator(mode="after")
     def _mode(self) -> CropParams:

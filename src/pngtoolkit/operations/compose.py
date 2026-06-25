@@ -21,11 +21,15 @@ _Position = Literal["top-left", "top-right", "bottom-left", "bottom-right", "cen
 class WatermarkParams(OperationParams):
     """Marca d'água de texto (``text``) ou de imagem (segundo arquivo de entrada)."""
 
-    text: str | None = None
-    position: _Position = "bottom-right"
-    opacity: float = Field(default=0.5, ge=0.0, le=1.0)
-    margin: int = Field(default=16, ge=0)
-    font_size: int | None = Field(default=None, gt=0)
+    text: str | None = Field(
+        default=None, description="texto da marca (se não houver 2º arquivo de imagem)"
+    )
+    position: _Position = Field(default="bottom-right", description="cantos ou center")
+    opacity: float = Field(default=0.5, ge=0.0, le=1.0, description="0.0 a 1.0")
+    margin: int = Field(default=16, ge=0, description="margem da borda em pixels")
+    font_size: int | None = Field(
+        default=None, gt=0, description="tamanho da fonte do texto (auto se omitido)"
+    )
 
 
 @register
@@ -73,8 +77,11 @@ class WatermarkOperation(ImageOperation[WatermarkParams]):
 class BlurParams(OperationParams):
     """Desfoque gaussiano na imagem inteira ou só na ``region`` (caixa de pixels)."""
 
-    radius: float = Field(default=8.0, gt=0)
-    region: tuple[int, int, int, int] | None = None
+    radius: float = Field(default=8.0, gt=0, description="raio do desfoque gaussiano")
+    region: tuple[int, int, int, int] | None = Field(
+        default=None,
+        description="região em pixels: LEFT TOP RIGHT BOTTOM (origem no topo-esquerdo)",
+    )
 
 
 @register

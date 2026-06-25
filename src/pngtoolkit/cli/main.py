@@ -56,6 +56,11 @@ def _unwrap_optional(annotation: Any) -> tuple[Any, bool]:
     return annotation, False
 
 
+def _help_for(field: Any, fallback: str) -> str:
+    """Usa a descrição do campo Pydantic como ajuda da flag; senão o fallback."""
+    return field.description or fallback
+
+
 def _build_option(name: str, field: Any) -> click.Option:
     flag = "--" + name.replace("_", "-")
     annotation, optional = _unwrap_optional(field.annotation)
@@ -64,32 +69,38 @@ def _build_option(name: str, field: Any) -> click.Option:
     default = None if field.is_required() else field.default
 
     if annotation is bool:
-        return click.Option([f"{flag}/--no-{name.replace('_', '-')}", name], default=default)
+        return click.Option(
+            [f"{flag}/--no-{name.replace('_', '-')}", name],
+            default=default, help=_help_for(field, ""),
+        )
     if origin is Literal:
         choices = [str(value) for value in get_args(annotation)]
         return click.Option(
-            [flag, name], type=click.Choice(choices), default=default, required=required
+            [flag, name], type=click.Choice(choices), default=default,
+            required=required, help=_help_for(field, ""),
         )
     if origin is list:
         element, _ = _unwrap_optional(get_args(annotation)[0])
         return click.Option(
             [flag, name], type=_PY_TYPES.get(element, str), multiple=True,
-            help="repita a flag para múltiplos valores",
+            help=_help_for(field, "repita a flag para múltiplos valores"),
         )
     if origin is tuple:
         element, _ = _unwrap_optional(get_args(annotation)[0])
         nargs = len(get_args(annotation))
+        fallback = f"informe {nargs} valores separados por espaço"
         return click.Option(
             [flag, name], type=_PY_TYPES.get(element, str), nargs=nargs,
-            help="informe os valores separados por espaço",
+            help=_help_for(field, fallback),
         )
     if origin is dict:
         return click.Option(
             [flag, name], multiple=True, metavar="CHAVE=VALOR",
-            help="repita a flag; formato chave=valor",
+            help=_help_for(field, "repita a flag; formato chave=valor"),
         )
     return click.Option(
-        [flag, name], type=_PY_TYPES.get(annotation, str), default=default, required=required
+        [flag, name], type=_PY_TYPES.get(annotation, str), default=default,
+        required=required, help=_help_for(field, ""),
     )
 
 

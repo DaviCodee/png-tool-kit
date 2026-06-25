@@ -1,0 +1,74 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pngtoolkit"
+version = "0.1.0"
+description = "Concentrador de operações de imagem: um núcleo Python com adaptadores de CLI e API."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+authors = [{ name = "Davi Moreira" }]
+keywords = ["image", "png", "resize", "convert", "watermark", "favicon", "toolkit"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Topic :: Multimedia :: Graphics",
+    "Topic :: Utilities",
+]
+dependencies = [
+    "pillow>=10.0",
+    "pydantic>=2.6",
+]
+
+[project.optional-dependencies]
+cli = ["click>=8.1"]
+api = ["fastapi>=0.110", "uvicorn>=0.29", "python-multipart>=0.0.9"]
+avif = ["pillow-avif-plugin>=1.4"]   # opcional — habilita format=avif
+# svg: sem dependência Python; requer os binários 'magick' e 'potrace' no sistema.
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.5",
+    "mypy>=1.10",
+    "httpx>=0.27",
+]
+
+[project.scripts]
+pik = "pngtoolkit.cli.main:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pngtoolkit"]
+
+[tool.ruff]
+src = ["src", "tests"]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "W"]
+
+[tool.ruff.lint.per-file-ignores]
+# FastAPI usa File()/Form() como defaults (padrão do framework, não é bug).
+"src/pngtoolkit/api/app.py" = ["B008"]
+
+[tool.mypy]
+# Semântica 3.12 evita falha de parse em stubs de dependências transitivas;
+# o runtime continua suportando 3.11+ e o ruff valida a sintaxe-alvo py311.
+python_version = "3.12"
+packages = ["pngtoolkit"]
+mypy_path = "src"
+strict = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = [
+    "PIL",
+    "PIL.*",
+    "pillow_avif",
+    "pillow_avif.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

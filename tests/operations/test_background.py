@@ -46,43 +46,58 @@ def test_color_mode_explicit_color():
 
 
 def test_ai_mode_wiring(monkeypatch):
-    """Verifica o contrato com o rembg sem depender da lib pesada (módulo fake)."""
+    """Verifica o pipeline U²-Net sem baixar o modelo nem depender do onnxruntime real.
+
+    Injeta um ``onnxruntime`` fake (sessão que devolve uma saliência sintética) e
+    evita o download. Usa numpy real (do extra dev) para exercitar pré/pós-processo.
+    """
+    np = pytest.importorskip("numpy")
     import sys
     import types
 
     calls: dict[str, object] = {}
 
-    def new_session(model: str):
-        calls["model"] = model
-        return f"session:{model}"
+    class FakeInput:
+        name = "input"
 
-    def remove(data: bytes, session=None):
-        calls["session"] = session
-        buffer = BytesIO()
-        Image.new("RGBA", (10, 10), (0, 0, 0, 0)).save(buffer, format="PNG")
-        return buffer.getvalue()
+    class FakeSession:
+        def __init__(self, path, providers=None):
+            calls["path"] = path
+            calls["providers"] = providers
 
-    fake = types.ModuleType("rembg")
-    fake.new_session = new_session  # type: ignore[attr-defined]
-    fake.remove = remove  # type: ignore[attr-defined]
-    monkeypatch.setitem(sys.modules, "rembg", fake)
+        def get_inputs(self):
+            return [FakeInput()]
 
-    from pngtoolkit.engines import rembg_engine
+        def run(self, _outputs, feed):
+            calls["feed_shape"] = next(iter(feed.values())).shape
+            # Saliência alta no centro (objeto), baixa nas bordas (fundo).
+            out = np.zeros((1, 1, 320, 320), dtype="float32")
+            out[0, 0, 80:240, 80:240] = 1.0
+            return [out]
 
-    monkeypatch.setattr(rembg_engine, "_sessions", {})
+    fake_ort = types.ModuleType("onnxruntime")
+    fake_ort.InferenceSession = FakeSession  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "onnxruntime", fake_ort)
+
+    from pngtoolkit.engines import onnx_bg
+
+    monkeypatch.setattr(onnx_bg, "_sessions", {})
+    monkeypatch.setattr(onnx_bg, "_model_path", lambda model: "fake.onnx")
 
     result = _run(_solid_with_square(), method="ai", model="u2net")
-    assert calls["model"] == "u2net"
-    assert calls["session"] == "session:u2net"
+    assert calls["path"] == "fake.onnx"
+    assert calls["feed_shape"] == (1, 3, 320, 320)
     out = Image.open(BytesIO(result.single.data))
     assert out.mode == "RGBA"
     assert result.single.media_type == "image/png"
+    # Centro opaco (objeto), canto transparente (fundo).
+    assert out.getpixel((20, 20))[3] > out.getpixel((0, 0))[3]
 
 
 def test_ai_mode_missing_dependency():
-    """Garante a mensagem de erro orientando o extra quando rembg está ausente."""
-    if importlib.util.find_spec("rembg") is not None:
-        pytest.skip("rembg instalado")
+    """Sem o onnxruntime, o modo ai falha com MissingDependencyError (HTTP 501)."""
+    if importlib.util.find_spec("onnxruntime") is not None:
+        pytest.skip("onnxruntime instalado")
     from pngtoolkit.core.errors import MissingDependencyError
 
     with pytest.raises(MissingDependencyError):

@@ -25,13 +25,14 @@ dependencies = [
 cli = ["click>=8.1"]
 api = ["fastapi>=0.110", "uvicorn>=0.29", "python-multipart>=0.0.9"]
 avif = ["pillow-avif-plugin>=1.4"]   # opcional — habilita format=avif
-bg = ["rembg>=2.0", "onnxruntime>=1.17"]   # opcional — remove-bg modo 'ai'
+bg = ["onnxruntime>=1.17", "numpy>=1.26"]   # opcional — remove-bg modo 'ai' (U²-Net via ONNX)
 # svg: sem dependência Python; requer os binários 'magick' e 'potrace' no sistema.
 dev = [
     "pytest>=8.0",
     "ruff>=0.5",
     "mypy>=1.10",
     "httpx>=0.27",
+    "numpy>=1.26",
 ]
 
 [project.scripts]
@@ -67,11 +68,14 @@ module = [
     "PIL.*",
     "pillow_avif",
     "pillow_avif.*",
-    "rembg",
-    "rembg.*",
     "onnxruntime",
     "onnxruntime.*",
 ]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["numpy", "numpy.*", "onnxruntime", "onnxruntime.*"]
+follow_imports = "skip"
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

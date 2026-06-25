@@ -12,8 +12,8 @@ from pngtoolkit.core.operation import ImageOperation
 from pngtoolkit.core.params import OperationParams
 from pngtoolkit.core.registry import register
 from pngtoolkit.core.validation import ensure_image, replace_ext
+from pngtoolkit.engines import onnx_bg
 from pngtoolkit.engines import pillow_engine as pe
-from pngtoolkit.engines import rembg_engine
 
 
 class RemoveBgParams(OperationParams):
@@ -28,8 +28,8 @@ class RemoveBgParams(OperationParams):
     tolerance: int = Field(
         default=30, ge=0, le=255, description="tolerância de cor 0–255 (modo color)"
     )
-    model: str = Field(
-        default="u2net", description="modelo do rembg (modo ai): u2net, isnet-general-use, etc."
+    model: Literal["u2net", "u2netp"] = Field(
+        default="u2net", description="modelo U²-Net (modo ai): u2net (qualidade) ou u2netp (leve)"
     )
 
 
@@ -44,7 +44,7 @@ class RemoveBgOperation(ImageOperation[RemoveBgParams]):
         item = inputs[0]
         ensure_image(item.data, item.name)
         if params.method == "ai":
-            data = rembg_engine.remove_background(item.data, model=params.model)
+            data = onnx_bg.remove_background(item.data, model=params.model)
         else:
             image = pe.open_image(item.data, item.name)
             cut = pe.remove_background_color(

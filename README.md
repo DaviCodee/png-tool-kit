@@ -36,7 +36,7 @@ pip install -e ".[cli,api,avif,dev]" # tudo, incluindo testes
 | `cli`   | comando `pik`                              | —                                |
 | `api`   | servidor FastAPI/uvicorn                   | —                                |
 | `avif`  | `convert`/`compress` para/desde AVIF       | —                                |
-| `bg`**  | `remove-bg` modo `ai` (rembg)              | baixa o modelo no 1º uso         |
+| `bg`**  | `remove-bg` modo `ai` (U²-Net via ONNX)    | baixa o modelo (~168MB) no 1º uso|
 | `svg`*  | `png-to-svg`                               | binários `magick` e `potrace`    |
 | `dev`   | pytest, ruff, mypy, httpx                  | —                                |
 
@@ -44,10 +44,11 @@ pip install -e ".[cli,api,avif,dev]" # tudo, incluindo testes
 `potrace` instalados no sistema. Operações que dependem de um extra ausente continuam
 listadas, mas falham na execução com `MissingDependencyError` (HTTP 501 na API).
 
-\*\* O extra `bg` (modo `ai` do `remove-bg`) usa o `rembg` + `onnxruntime`. Hoje a
-cadeia de dependências do `rembg` (`pymatting`/`numba`/`llvmlite`) **só instala em
-Python 3.10–3.12**. O modo `color` do `remove-bg` não precisa do extra e funciona em
-qualquer versão.
+\*\* O extra `bg` (modo `ai` do `remove-bg`) roda o modelo **U²-Net direto no
+`onnxruntime`** (+ `numpy`), sem `rembg` — então instala normalmente em Python
+3.11–3.14. O arquivo `.onnx` é baixado uma vez e cacheado em
+`$XDG_CACHE_HOME/pngtoolkit` (por padrão `~/.cache/pngtoolkit`). O modo `color` não
+precisa do extra e funciona sempre.
 
 ## Operações
 
@@ -115,7 +116,8 @@ pik remove-bg produto.png --method color --tolerance 30 -o out/
 pik remove-bg logo.png --method color --color 255 255 255 -o out/
 
 # modo ai (retrato/recorte genérico; requer o extra 'bg'):
-pik remove-bg retrato.jpg --method ai --model u2net -o out/
+pik remove-bg retrato.jpg --method ai --model u2net -o out/    # u2net = qualidade
+pik remove-bg retrato.jpg --method ai --model u2netp -o out/   # u2netp = leve/rápido
 ```
 
 A saída é sempre PNG (precisa de canal alfa). Sem o extra `bg`, o modo `ai` falha com

@@ -71,3 +71,24 @@ def test_invalid_image_422(make_image):
         "/operations/resize", files=files, data={"params": json.dumps({"width": 10})}
     )
     assert response.status_code == 422
+
+
+def test_multi_file_fan_out_returns_zip(make_image):
+    import zipfile
+
+    files = [
+        ("files", ("a.png", make_image(20, 20), "image/png")),
+        ("files", ("sub/b.png", make_image(20, 20), "image/png")),
+    ]
+    response = client.post("/operations/compress", files=files)
+    assert response.status_code == 200, response.text
+    assert response.headers["content-type"] == "application/zip"
+    names = zipfile.ZipFile(BytesIO(response.content)).namelist()
+    assert "a-comprimido.png" in names
+    assert "sub/b-comprimido.png" in names
+
+
+def test_listing_exposes_fan_out():
+    response = client.get("/operations")
+    ops = {op["name"]: op for op in response.json()}
+    assert ops["compress"]["fan_out"] == "True"

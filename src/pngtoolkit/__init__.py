@@ -14,7 +14,7 @@ from pngtoolkit.core.io import Artifact, ImageInput, OperationResult
 from pngtoolkit.core.operation import ImageOperation
 from pngtoolkit.core.registry import all_operations, get_operation, register
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "Artifact",

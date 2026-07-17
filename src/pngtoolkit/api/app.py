@@ -28,7 +28,7 @@ from pngtoolkit.core.registry import all_operations, get_operation
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="pngtoolkit", version="0.1.0")
+    app = FastAPI(title="pngtoolkit", version="0.2.0")
 
     @app.get("/operations")
     def list_operations() -> list[dict[str, str]]:
@@ -39,6 +39,7 @@ def create_app() -> FastAPI:
                 "summary": op.summary,
                 "min_inputs": str(op.min_inputs),
                 "max_inputs": "" if op.max_inputs is None else str(op.max_inputs),
+                "fan_out": str(op.fan_out),
             }
             for op in all_operations()
         ]

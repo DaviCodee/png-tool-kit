@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pngtoolkit"
-version = "0.1.0"
+version = "0.2.0"
 description = "Concentrador de operações de imagem: um núcleo Python com adaptadores de CLI e API."
 readme = "README.md"
 requires-python = ">=3.11"

@@ -59,6 +59,7 @@ precisa do extra e funciona sempre.
 | `rotate`      | transformar  | ângulo qualquer (90/180/270 ou custom)                            |
 | `flip`        | transformar  | espelho horizontal ou vertical                                    |
 | `convert`     | formato      | png / jpg / webp / gif / bmp / avif                               |
+| `batch-convert`| formato     | converte toda a árvore de uma pasta, com opção de apagar originais|
 | `compress`    | formato      | recompressão (quality + optimize)                                 |
 | `grayscale`   | formato      | tons de cinza                                                     |
 | `exif-read`   | metadados    | lê EXIF e devolve JSON (sem produzir arquivo)                     |
@@ -77,6 +78,9 @@ pik list                                   # lista as operações
 pik schema resize                          # schema JSON dos parâmetros
 pik resize foto.png --width 800 -o out/
 pik convert foto.png --format webp -o out/
+pik batch-convert ./fotos --format webp                # recursivo, in-place, mantém originais
+pik batch-convert ./fotos --format webp --delete-originals
+pik batch-convert ./fotos -o ./out --format avif       # espelha em ./out, originais intactos
 pik compress foto.jpg --quality 60 -o out/
 pik watermark foto.png --text "© 2026" --position bottom-right -o out/
 pik watermark foto.png logo.png --opacity 0.4 -o out/   # marca d'água de imagem
@@ -125,6 +129,15 @@ A saída é sempre PNG (precisa de canal alfa). Sem o extra `bg`, o modo `ai` fa
 
 Operações de múltiplas saídas (ex.: `favicon`) gravam vários arquivos no diretório
 `-o`. Operações sem artefato (ex.: `exif-read`) imprimem o resultado como JSON.
+
+### Conversão em lote (`batch-convert`)
+
+Aplica o `convert` recursivamente sobre uma pasta. Aceita uma lista de extensões
+fixa (`png`, `jpg`, `jpeg`, `webp`, `gif`, `bmp`, `tif`, `tiff`, `avif`); preserva a
+estrutura relativa de subpastas. Por padrão grava na mesma pasta da origem; com
+`-o/--out` espelha a árvore em outro diretório (originais ficam intactos). Os
+originais só são apagados **depois** que todos os artefatos foram escritos com
+sucesso — uma falha de I/O no meio do lote preserva tudo.
 
 ## Uso — API
 

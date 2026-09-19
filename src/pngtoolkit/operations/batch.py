@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import PurePosixPath
-from typing import Literal
 
 from pydantic import Field
 
@@ -13,8 +12,9 @@ from pngtoolkit.core.operation import ImageOperation
 from pngtoolkit.core.params import OperationParams
 from pngtoolkit.core.registry import register
 from pngtoolkit.core.validation import ensure_image
-from pngtoolkit.engines import avif
+from pngtoolkit.engines import ensure_codec
 from pngtoolkit.engines import pillow_engine as pe
+from pngtoolkit.engines.pillow_engine import OutputFormat
 
 
 class BatchConvertParams(OperationParams):
@@ -25,7 +25,7 @@ class BatchConvertParams(OperationParams):
     que conhece os caminhos reais. A operação em si devolve os artefatos em memória.
     """
 
-    format: Literal["png", "jpg", "webp", "gif", "bmp", "avif"] = "webp"
+    format: OutputFormat = "webp"
     quality: int | None = Field(default=None, ge=1, le=100)
     delete_originals: bool = False
 
@@ -40,8 +40,7 @@ class BatchConvertOperation(ImageOperation[BatchConvertParams]):
     max_inputs = None
 
     def run(self, inputs: Sequence[ImageInput], params: BatchConvertParams) -> OperationResult:
-        if params.format == "avif":
-            avif.ensure_available()
+        ensure_codec(params.format)
         artifacts: list[Artifact] = []
         for item in inputs:
             ensure_image(item.data, item.name)

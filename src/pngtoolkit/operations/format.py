@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Literal
 
 from pydantic import Field
 
@@ -12,14 +11,15 @@ from pngtoolkit.core.operation import ImageOperation
 from pngtoolkit.core.params import OperationParams
 from pngtoolkit.core.registry import register
 from pngtoolkit.core.validation import ensure_image, replace_ext, with_suffix
-from pngtoolkit.engines import avif
+from pngtoolkit.engines import ensure_codec
 from pngtoolkit.engines import pillow_engine as pe
+from pngtoolkit.engines.pillow_engine import OutputFormat
 
 
 class ConvertParams(OperationParams):
-    """Formato de saída. ``avif`` exige o extra ``avif`` instalado."""
+    """Formato de saída. ``heic``/``heif`` exigem o extra ``heif``."""
 
-    format: Literal["png", "jpg", "webp", "gif", "bmp", "avif"] = "png"
+    format: OutputFormat = "png"
     quality: int | None = Field(default=None, ge=1, le=100)
 
 
@@ -27,14 +27,16 @@ class ConvertParams(OperationParams):
 class ConvertOperation(ImageOperation[ConvertParams]):
     name = "convert"
     category = "formato"
-    summary = "Converte entre png, jpg, webp, gif, bmp e avif."
+    summary = (
+        "Converte entre png, jpg, webp, avif, heic, tiff, ico, jp2, pdf, tga, "
+        "ppm, qoi e outros."
+    )
     params_model = ConvertParams
 
     def run(self, inputs: Sequence[ImageInput], params: ConvertParams) -> OperationResult:
         item = inputs[0]
         ensure_image(item.data, item.name)
-        if params.format == "avif":
-            avif.ensure_available()
+        ensure_codec(params.format)
         image = pe.open_image(item.data, item.name)
         data = pe.to_bytes(image, params.format, quality=params.quality)
         artifact = Artifact(
@@ -46,7 +48,7 @@ class ConvertOperation(ImageOperation[ConvertParams]):
 
 
 class CompressParams(OperationParams):
-    """Recomprime preservando o formato. ``quality`` afeta jpg/webp/avif."""
+    """Recomprime preservando o formato. ``quality`` afeta jpg/webp/avif/heic."""
 
     quality: int = Field(default=75, ge=1, le=100)
     optimize: bool = True
@@ -64,8 +66,7 @@ class CompressOperation(ImageOperation[CompressParams]):
         ensure_image(item.data, item.name)
         image = pe.open_image(item.data, item.name)
         fmt = pe.default_format(image)
-        if fmt == "avif":
-            avif.ensure_available()
+        ensure_codec(fmt)
         data = pe.to_bytes(image, fmt, quality=params.quality, optimize=params.optimize)
         artifact = Artifact(
             data=data,
@@ -94,6 +95,7 @@ class GrayscaleOperation(ImageOperation[GrayscaleParams]):
         ensure_image(item.data, item.name)
         image = pe.open_image(item.data, item.name)
         fmt = pe.default_format(image)
+        ensure_codec(fmt)
         gray = pe.to_grayscale(image)
         data = pe.to_bytes(gray, fmt)
         artifact = Artifact(

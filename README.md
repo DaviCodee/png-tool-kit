@@ -13,7 +13,7 @@ AVIF e vetorização para SVG.
 ```
 src/pngtoolkit/
   core/        contrato (operation), registro, params (Pydantic), io, validação, erros
-  engines/     pillow_engine (primário), trace (svg), avif
+  engines/     pillow_engine (primário), trace (svg), avif, heif
   operations/  transform, format, exif, compose, vector  (cada @register se auto-registra)
   cli/         main.py  — Click, um subcomando por operação (pik)
   api/         app.py   — FastAPI gerada a partir do registro
@@ -35,7 +35,8 @@ pip install -e ".[cli,api,avif,dev]" # tudo, incluindo testes
 |---------|--------------------------------------------|----------------------------------|
 | `cli`   | comando `pik`                              | —                                |
 | `api`   | servidor FastAPI/uvicorn                   | —                                |
-| `avif`  | `convert`/`compress` para/desde AVIF       | —                                |
+| `avif`  | AVIF em Pillow antigo (11.1+ já tem nativo)| —                                |
+| `heif`  | `heic`/`heif` (leitura e gravação)         | —                                |
 | `bg`**  | `remove-bg` modo `ai` (U²-Net via ONNX)    | baixa o modelo (~168MB) no 1º uso|
 | `svg`*  | `png-to-svg`                               | binários `magick` e `potrace`    |
 | `dev`   | pytest, ruff, mypy, httpx                  | —                                |
@@ -58,7 +59,7 @@ precisa do extra e funciona sempre.
 | `crop`        | transformar  | caixa de pixels ou dimensão ancorada (centro/cantos)              |
 | `rotate`      | transformar  | ângulo qualquer (90/180/270 ou custom)                            |
 | `flip`        | transformar  | espelho horizontal ou vertical                                    |
-| `convert`     | formato      | png / jpg / webp / gif / bmp / avif                               |
+| `convert`     | formato      | png, jpg, webp, avif, heic*, gif, bmp, tiff, ico, jp2, pdf, tga, ppm, qoi, sgi, icns, dds, pcx, eps, xbm |
 | `batch-convert`| formato     | converte toda a árvore de uma pasta, com opção de apagar originais|
 | `compress`    | formato      | recompressão (quality + optimize)                                 |
 | `grayscale`   | formato      | tons de cinza                                                     |
@@ -132,8 +133,9 @@ Operações de múltiplas saídas (ex.: `favicon`) gravam vários arquivos no di
 
 ### Conversão em lote (`batch-convert`)
 
-Aplica o `convert` recursivamente sobre uma pasta. Aceita uma lista de extensões
-fixa (`png`, `jpg`, `jpeg`, `webp`, `gif`, `bmp`, `tif`, `tiff`, `avif`); preserva a
+Aplica o `convert` recursivamente sobre uma pasta. Expande diretórios filtrando por
+uma whitelist de extensões (`png`, `jpg`, `webp`, `avif`, `heic`, `tiff`, `ico`,
+`jp2`, `psd`, `tga`, `pcx`, `ppm`, `qoi`, etc. — sobreponível com `--ext`); preserva a
 estrutura relativa de subpastas. Por padrão grava na mesma pasta da origem; com
 `-o/--out` espelha a árvore em outro diretório (originais ficam intactos). Os
 originais só são apagados **depois** que todos os artefatos foram escritos com

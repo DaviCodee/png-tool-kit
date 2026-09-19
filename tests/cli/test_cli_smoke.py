@@ -49,7 +49,7 @@ def test_convert_choice_flag(tmp_path, make_image):
 def test_invalid_choice_fails(tmp_path, make_image):
     src = tmp_path / "foto.png"
     src.write_bytes(make_image())
-    result = runner.invoke(app, ["convert", str(src), "--format", "tga"])
+    result = runner.invoke(app, ["convert", str(src), "--format", "dxf"])
     assert result.exit_code != 0
 
 

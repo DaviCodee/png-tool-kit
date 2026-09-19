@@ -26,6 +26,7 @@ from pngtoolkit.core.errors import ImageToolkitError
 from pngtoolkit.core.io import ImageInput
 from pngtoolkit.core.operation import ImageOperation
 from pngtoolkit.core.registry import all_operations, get_operation
+from pngtoolkit.engines.pillow_engine import OutputFormat
 
 _RESERVED = {"list", "schema", "batch-convert"}
 _PY_TYPES: dict[type, type] = {int: int, float: float, str: str}
@@ -34,7 +35,13 @@ _PY_TYPES: dict[type, type] = {int: int, float: float, str: str}
 # nunca são filtrados). ``--ext`` sobrepõe esta lista.
 _FOLDER_WHITELIST: frozenset[str] = frozenset({
     ".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".tif", ".tiff", ".avif",
+    ".avifs", ".heic", ".heif", ".ico", ".cur", ".jp2", ".j2k", ".jpx", ".psd",
+    ".tga", ".icb", ".vda", ".vst", ".pcx", ".dcx", ".ppm", ".pgm", ".pbm",
+    ".pnm", ".qoi", ".sgi", ".rgb", ".icns", ".dds", ".xbm", ".xpm", ".eps",
 })
+
+# Escolhas de ``--format`` derivadas do Literal compartilhado com convert.
+_OUTPUT_FORMATS: tuple[str, ...] = tuple(get_args(OutputFormat))
 
 
 @click.group(help="Concentrador de operações de imagem.")
@@ -256,13 +263,13 @@ def _register_operation_commands() -> None:
 )
 @click.option(
     "--format", "format_",
-    type=click.Choice(["png", "jpg", "webp", "gif", "bmp", "avif"]),
+    type=click.Choice(_OUTPUT_FORMATS),
     default="webp",
     help="formato de saída.",
 )
 @click.option(
     "--quality", type=click.IntRange(1, 100), default=None,
-    help="qualidade (1–100) para formatos com perda (jpg/webp/avif).",
+    help="qualidade (1–100) para formatos com perda (jpg/webp/avif/heic).",
 )
 def batch_convert_command(
     inputs: tuple[Path, ...],

@@ -28,7 +28,7 @@ from pngtoolkit.core.registry import all_operations, get_operation
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="pngtoolkit", version="0.2.0")
+    app = FastAPI(title="pngtoolkit", version="0.3.0")
 
     @app.get("/operations")
     def list_operations() -> list[dict[str, str]]:

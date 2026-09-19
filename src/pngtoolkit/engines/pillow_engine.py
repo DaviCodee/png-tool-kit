@@ -1,14 +1,15 @@
 """Motor primário: invólucro fino sobre o Pillow.
 
-O Pillow é a única dependência do núcleo e cobre PNG, JPEG, WebP, GIF, BMP, TIFF e
-ICO nativamente. Todas as funções recebem/devolvem objetos ``PIL.Image.Image`` ou
-``bytes``; nenhuma lógica de operação vive aqui.
+O Pillow é a única dependência do núcleo; codecs extras (AVIF em Pillow antigo,
+HEIC/HEIF) entram via :mod:`pngtoolkit.engines.avif` e :mod:`pngtoolkit.engines.heif`.
+Todas as funções recebem/devolvem objetos ``PIL.Image.Image`` ou ``bytes``; nenhuma
+lógica de operação vive aqui.
 """
 
 from __future__ import annotations
 
 from io import BytesIO
-from typing import Any
+from typing import Any, Literal
 
 from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
 from PIL.ExifTags import TAGS
@@ -28,14 +29,51 @@ _FORMATS: dict[str, tuple[str, str]] = {
     "gif": ("GIF", "image/gif"),
     "bmp": ("BMP", "image/bmp"),
     "tiff": ("TIFF", "image/tiff"),
+    "tif": ("TIFF", "image/tiff"),
     "ico": ("ICO", "image/x-icon"),
     "avif": ("AVIF", "image/avif"),
+    "heic": ("HEIF", "image/heic"),
+    "heif": ("HEIF", "image/heif"),
+    "jp2": ("JPEG2000", "image/jp2"),
+    "pdf": ("PDF", "application/pdf"),
+    "tga": ("TGA", "image/x-tga"),
+    "pcx": ("PCX", "image/x-pcx"),
+    "ppm": ("PPM", "image/x-portable-pixmap"),
+    "qoi": ("QOI", "image/qoi"),
+    "sgi": ("SGI", "image/x-sgi"),
+    "icns": ("ICNS", "image/x-icns"),
+    "eps": ("EPS", "application/postscript"),
+    "dds": ("DDS", "image/x-dds"),
+    "xbm": ("XBM", "image/x-xbitmap"),
 }
 
-# Formatos que perdem o canal alfa ao salvar.
-_NO_ALPHA = {"JPEG", "BMP"}
+# Formatos de saída aceitos nas operações (mesma chave de ``_FORMATS``).
+OutputFormat = Literal[
+    "png", "jpg", "jpeg", "webp", "gif", "bmp", "tiff", "tif", "ico", "avif",
+    "heic", "heif", "jp2", "pdf", "tga", "pcx", "ppm", "qoi", "sgi", "icns",
+    "eps", "dds", "xbm",
+]
+
 # Formatos que respeitam o parâmetro ``quality``.
-_LOSSY = {"JPEG", "WEBP", "AVIF"}
+_LOSSY = {"JPEG", "WEBP", "AVIF", "HEIF"}
+
+# Modos que cada formato de gravação aceita; o que não estiver na lista é
+# convertido por :func:`_frame_for_save`. Formatos fora do mapa aceitam qualquer
+# modo (o Pillow converte internamente, ex.: PDF).
+_SAVE_MODES: dict[str, frozenset[str]] = {
+    "JPEG": frozenset({"RGB", "L", "1"}),
+    "BMP": frozenset({"RGB", "L", "P", "1"}),
+    "EPS": frozenset({"RGB", "L"}),
+    "PCX": frozenset({"RGB", "L", "P", "1"}),
+    "PPM": frozenset({"RGB", "L", "1"}),
+    "QOI": frozenset({"RGB", "RGBA"}),
+    "SGI": frozenset({"RGB", "RGBA", "L"}),
+    "DDS": frozenset({"RGB", "RGBA", "L", "LA"}),
+    "JPEG2000": frozenset({"RGB", "RGBA", "L", "LA"}),
+    "XBM": frozenset({"1"}),
+}
+
+_ALPHA_MODES = frozenset({"RGBA", "LA", "PA"})
 
 
 def media_type(fmt: str) -> str:
@@ -63,12 +101,33 @@ def open_image(data: bytes, name: str | None = None) -> Image.Image:
     return image
 
 
+# image.format do Pillow -> nome curto interno (fora disso, formato de origem
+# não resalvável cai no fallback: ex. PSD volta como png).
+_FORMAT_ALIASES = {"jpeg2000": "jp2", "mpo": "jpg"}
+
+
 def default_format(image: Image.Image, fallback: str = "png") -> str:
     """Nome curto do formato de origem da imagem, ou ``fallback``."""
     fmt = (image.format or "").lower()
-    if fmt == "jpeg":
-        return "jpg"
+    fmt = _FORMAT_ALIASES.get(fmt, fmt)
     return fmt if fmt in _FORMATS else fallback
+
+
+def _frame_for_save(frame: Image.Image, pillow_fmt: str) -> Image.Image:
+    """Ajusta o modo ao que o formato de saída aceita (alfa, binarização etc.)."""
+    allowed = _SAVE_MODES.get(pillow_fmt)
+    if allowed is None or frame.mode in allowed:
+        return frame
+    has_alpha = frame.mode in _ALPHA_MODES or (
+        frame.mode == "P" and "transparency" in frame.info
+    )
+    # Com alfa, preserva RGBA quando o formato suporta; senão achata em RGB.
+    # Sem alfa, prioriza RGB. XBM (só "1") cai no último recurso.
+    order = ("RGBA", "RGB", "L", "1") if has_alpha else ("RGB", "L", "RGBA", "1")
+    for mode in order:
+        if mode in allowed:
+            return frame.convert(mode)
+    return frame  # sem conversão aplicável — deixa o Pillow reclamar
 
 
 def to_bytes(
@@ -81,9 +140,7 @@ def to_bytes(
 ) -> bytes:
     """Serializa ``image`` no formato ``fmt`` e devolve os bytes."""
     pillow_fmt = _pillow_format(fmt)
-    frame = image
-    if pillow_fmt in _NO_ALPHA and frame.mode in {"RGBA", "LA", "P"}:
-        frame = frame.convert("RGB")
+    frame = _frame_for_save(image, pillow_fmt)
 
     options: dict[str, Any] = {}
     if optimize and pillow_fmt in {"PNG", "JPEG"}:
